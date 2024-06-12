@@ -7,7 +7,7 @@
 #include <numeric>
 #include <iostream>
 
-class tRotor final : public IRotor {
+class tRotor : public IRotor {
   public:
     constexpr static uint8_t N = 26;
     // such default ctor which just makes useless rotor with no cipher
@@ -16,11 +16,14 @@ class tRotor final : public IRotor {
       std::iota(std::begin(wiring_), std::end(wiring_), 0);
     }
 
-    [[nodiscard]] bool makeStep() override;
-    [[nodiscard]] uint8_t get(uint8_t c) const override;
+    tRotor(const std::string& configfile) {
+      tRotor::setConfig(configfile);
+    }
 
+    virtual ~tRotor() = default;
+
+    [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override;
     void setConfig(const std::string& filename) override;
-    void setOffset(int offset) override;
 
     friend std::ostream& operator<<(std::ostream& os, const tRotor& r) {
       r.dump(os);
@@ -28,11 +31,13 @@ class tRotor final : public IRotor {
     }
 
   private:
+    std::string name_;
     uint8_t offset_ {0};
     uint8_t wiring_[N] = {0};
 
-    void spin(int count);
+    void makeSpins(int count);
     void dump(std::ostream& os) const {
+      os << name_ << ": ";
       for (auto w : wiring_) {
         os << char(w + 'A');
       }

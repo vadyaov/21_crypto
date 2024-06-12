@@ -11,39 +11,40 @@ void tRotor::setConfig(const std::string& filename) {
     throw std::invalid_argument("Can't open file: " + filename);
 
   json data = json::parse(f);
-  std::string w = data["wiring"];
-  assert(w.length() == N);
+  name_ = data["name"];
 
+  std::string w = data["wiring"];
+
+  assert(w.length() == N); // IMPORTANT
   int i = 0;
   for (char c : w) {
     wiring_[i++] = std::tolower(c) - 'a';
   }
   
-  setOffset(data["offset"]);
-  spin(offset_);
+  offset_ = static_cast<uint8_t>(data["offset"]) % N;
+  makeSpins(offset_);
 }
 
-void tRotor::setOffset(int offset) {
-  offset_ = offset % N;
-}
+std::pair<uint8_t, bool> tRotor::get(std::pair<uint8_t, bool> c) {
+  std::pair<uint8_t, bool> pinned = {wiring_[c.first], false};
+  
+  if (c.second == true) {
+    makeSpins(1);
+    ++offset_;
 
-bool tRotor::makeStep() {
-  spin(1);
-  offset_++;
+    // DEBUG
+    std::cout << name_ << " made 1 spin\n";
 
-  if (offset_ == N) {
-    offset_ = 0;
-    return true;
+    if (N == offset_) {
+      offset_ = 0;
+      pinned.second = true;
+    }
   }
 
-  return false;
+  return pinned;
 }
 
-uint8_t tRotor::get(uint8_t c) const {
-  return wiring_[c];
-}
-
-void tRotor::spin(int count) {
+void tRotor::makeSpins(int count) {
   std::vector<uint8_t> tmp;
   std::copy(std::begin(wiring_), std::begin(wiring_) + count, std::back_inserter(tmp));
 
