@@ -11,7 +11,7 @@ class Enigma final {
 
   private:
     std::list<IRotor*> rotors_;
-    Reflector reflector_;
+    /* Reflector reflector_; */
 };
 
 #endif // _ENIGMA_H_
