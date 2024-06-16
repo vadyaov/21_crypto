@@ -1,5 +1,6 @@
 {
-  "name": "Rotor 2",
-  "wiring": "NTZPSFBOKMWRCJDIVLAEYUXHGQ",
-  "offset": 0
+  "name": "II",
+  "wiring": "AJDKSIRUXBLHWTMCQGZNPYFVOE",
+  "start": "A",
+  "notch": "A"
 }

@@ -12,40 +12,37 @@
 
 using json = nlohmann::json;
 
-template<uint8_t N>
-class Rotor : public AbstractRotor<N> {
+class TextRotor final : public AbstractRotor<26> {
   public:
-    using AbstractRotor<N>::wiring_;
-    using AbstractRotor<N>::name_;
+    using AbstractRotor<26>::wiring_;
+    using AbstractRotor<26>::name_;
     // such default ctor which just makes useless rotor with no cipher
     // A-A, B-B, ..., Z-Z
-    Rotor() : offset_{0} {
+    TextRotor() : AbstractRotor<26>(), turnover_{0} {
       std::iota(std::begin(wiring_), std::end(wiring_), 0);
     }
 
-    Rotor(const std::string& configfile) {
-      Rotor::setConfig(configfile);
+    TextRotor(const std::string& configfile) : TextRotor() {
+      TextRotor::setConfig(configfile);
     }
 
-    virtual ~Rotor() {};
-
     [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override {
-      std::pair<uint8_t, bool> pinned = {wiring_[c.first], false};
-      
-      if (c.second == true) {
-        makeSpins(1);
-        ++offset_;
+      // сначала поворот, потом сигнал
+      /* bool spinNext = false; */
+      /* if (c.second == true) { */
+      /*   if (wiring_[0] == turnover_) { */
+      /*     spinNext = true; */
+      /*     std::cout << "Spin next ROTOR\n"; */
+      /*   } */
+      /*   makeSpins(1); */
+      /* } */
 
-        // DEBUG
-        std::cout << name_ << " made 1 spin\n";
+      return std::make_pair(wiring_[c.first], false);
+    }
 
-        if (N == offset_) {
-          offset_ = 0;
-          pinned.second = true;
-        }
-      }
-
-      return pinned;
+    [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {
+      return std::distance(std::begin(wiring_),
+                           std::find(std::begin(wiring_), std::end(wiring_), c));
     }
 
     void setConfig(const std::string& filename) override {
@@ -58,49 +55,39 @@ class Rotor : public AbstractRotor<N> {
 
       std::string w = data["wiring"];
 
-      assert(w.length() == N); // IMPORTANT
-
-      /* if (!isValid(w)) */
-      /*   throw std::invalid_argument("Incorrect " + name_ + " config: " + w); */
+      if (w.length() != 26) throw std::invalid_argument("");
 
       int i = 0;
       for (char c : w) {
         wiring_[i++] = std::tolower(c) - 'a';
       }
-      
-      offset_ = static_cast<uint8_t>(data["offset"]) % N;
-      makeSpins(offset_);
+
+      std::string start = data["start"];
+      std::string notch = data["notch"];
+
+      int pos = 26 - (std::tolower(notch[0]) - 'a');
+      if (pos == 26) pos = 0;
+      turnover_ = wiring_[pos];
+      std::cout << char(turnover_ + 'a') << "\n";
+
+      makeSpins(std::tolower(start[0]) - 'a');
     }
 
   private:
-    uint8_t offset_ ;
+    uint8_t turnover_;
 
     void makeSpins(int count) {
+      if (!count) return;
+      std::cout << "\nMAKE " << count << "SPINs FOR " << name_ << "\n";
       std::vector<uint8_t> tmp;
-      std::copy(std::begin(wiring_), std::begin(wiring_) + count, std::back_inserter(tmp));
+      std::copy(std::rbegin(wiring_), std::rbegin(wiring_) + count, std::back_inserter(tmp));
 
-      for (int i = 0; i != N - count; ++i) {
-        wiring_[i] = wiring_[i + count];
+      for (int i = 25; i >= count; --i) {
+        wiring_[i] = wiring_[i - count];
       }
 
-      std::copy(std::begin(tmp), std::end(tmp), std::end(wiring_) - count);
+      std::copy(std::begin(tmp), std::end(tmp), std::begin(wiring_));
     }
-};
-
-class Rotor26 final : public Rotor<26> {
-  public:
-    Rotor26(const std::string& configfile) : Rotor<26>(configfile) {}
-
-  /* protected: */
-  /*   bool isValid(const std::string& s) const override { */
-  /*     uint8_t mp[26] = {0}; */
-  /*     for (char c : wiring_) { */
-  /*       if (mp[tolower(c) - 'a'] == 1) return false; */
-
-  /*       mp[tolower(c) - 'a'] = 1; */
-  /*     } */
-  /*     return true; */
-  /*   } */
 };
 
 #endif // _ROTOR_H_

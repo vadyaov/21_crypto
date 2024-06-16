@@ -2,31 +2,33 @@
 #include "Reflector.h"
 #include <list>
 
-#define N 26
-
-using tRotor = Rotor26;
-using tReflector = Reflector26;
-
 int main() {
-  std::list<AbstractRotor<N>*> rotors;
-  rotors.push_back(new tRotor("enigma/config/rotor1.json"));
-  rotors.push_back(new tRotor("enigma/config/rotor2.json"));
-  rotors.push_back(new tRotor("enigma/config/rotor3.json"));
-  rotors.push_back(new tReflector("enigma/config/reflector.json"));
-  std::cout << "Alphabet ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
-  for (const AbstractRotor<N>* r : rotors)
+  std::list<AbstractRotor<26>*> rotors;
+  rotors.push_back(new TextRotor("enigma/config/rotor3.json"));
+  rotors.push_back(new TextRotor("enigma/config/rotor2.json"));
+  rotors.push_back(new TextRotor("enigma/config/rotor1.json"));
+  rotors.push_back(new TextReflector("enigma/config/reflector.json"));
+  std::cout << "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
+  for (const AbstractRotor<26>* r : rotors)
     std::cout << *r << "\n";
+  char c = 0;
+  while (c != '1') {
+    std::cin >> c;
+    std::pair<uint8_t, bool> start = {c - 'a', true};
+    std::cout << "VPERED\n";
+    for (auto& rot : rotors) {
+      std::cout << "Letter " << (char)(start.first + 'a') << " encodes to ";
+      start = rot->get(start);
+      std::cout << (char)(start.first + 'a') << "\n";
+      std::cout << *rot << "\n";
+    }
 
-  std::pair<uint8_t, bool> start = {'X' - 'A', true};
-  for (auto& rot : rotors) {
-    std::cout << "Letter " << (char)(start.first + 'A') << " encodes to ";
-    start = rot->get(start);
-    std::cout << (char)(start.first + 'A') << "\n";
-  }
-  for (auto rit = ++rotors.rbegin(); rit != rotors.rend(); ++rit) {
-    std::cout << "Letter " << (char)(start.first + 'A') << " encodes to ";
-    start = (*rit)->get(start);
-    std::cout << (char)(start.first + 'A') << "\n";
+    std::cout << "NAZAD\n";
+    for (auto rit = ++rotors.rbegin(); rit != rotors.rend(); ++rit) {
+      std::cout << "Letter " << (char)(start.first + 'a') << " encodes to ";
+      start.first = (*rit)->getReverse(start.first);
+      std::cout << (char)(start.first + 'a') << "\n";
+    }
   }
 
   for (auto& ptr : rotors) {
@@ -35,3 +37,7 @@ int main() {
   
   return 0;
 }
+
+// ABCDEFGHIJKLMNOPQRSTUVWXYZ
+// BDFHJLCPRTXVZNYEIWGAKMUSQO
+// ^

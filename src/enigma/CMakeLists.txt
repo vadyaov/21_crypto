@@ -1,3 +1,6 @@
+add_compile_options(-Wall -Werror -Wextra )
+add_link_options(-Wall -Werror -Wextra )
+
 add_executable(enigma
   test.cc
 )

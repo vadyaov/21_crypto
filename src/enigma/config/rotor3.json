@@ -1,6 +1,8 @@
 {
-  "name": "Rotor 3",
-  "wiring": "JVIUBHTCDYAKEQZPOSGXNRMWFL",
-  "offset": 0
+  "name": "III",
+  "wiring": "BDFHJLCPRTXVZNYEIWGAKMUSQO",
+  "start": "A",
+  "notch": "A"
 }
+
 

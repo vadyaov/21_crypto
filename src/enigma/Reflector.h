@@ -6,20 +6,21 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-template<uint8_t N>
-class Reflector : public AbstractRotor<N> {
-  using AbstractRotor<N>::wiring_;
-  using AbstractRotor<N>::name_;
+class TextReflector : public AbstractRotor<26> {
+  using AbstractRotor<26>::wiring_;
+  using AbstractRotor<26>::name_;
 
   public:
-    virtual ~Reflector() {}
-
-    Reflector(const std::string& configfile) {
-      Reflector::setConfig(configfile);
+    TextReflector(const std::string& configfile) {
+      TextReflector::setConfig(configfile);
     }
 
     [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override {
       return std::make_pair(wiring_[c.first], false);
+    }
+
+    [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {
+      return wiring_[c];
     }
 
     void setConfig(const std::string& filename) override {
@@ -42,26 +43,6 @@ class Reflector : public AbstractRotor<N> {
         wiring_[i++] = std::tolower(c) - 'a';
       }
     }
-};
-
-class Reflector26 final : public Reflector<26> {
-  public:
-    Reflector26(const std::string& configfile) : Reflector<26>(configfile) {}
-
-  /* protected: */
-  /*   bool isValid(const std::string& s) const override { */
-  /*     uint8_t mp[26] = {0}; */
-  /*     int i = 0; */
-  /*     for (char c : s) { */
-  /*       if ((mp[tolower(c) - 'a'] == 1 && mp[i] == 0) || */
-  /*           (mp[tolower(c) - 'a'] == 0 && mp[i] == 1)) { */
-  /*         return false; */
-  /*       } */
-
-  /*       mp[tolower(c) - 'a'] = mp[i++] = 1; */
-  /*     } */
-  /*     return true; */
-  /*   } */
 };
 
 #endif // _REFLECTOR_H_
