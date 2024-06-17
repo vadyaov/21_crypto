@@ -8,35 +8,145 @@ class IEnigma {
   public:
     virtual ~IEnigma() {}
 
-    virtual void encode(const std::string& filename) = 0;
+    virtual void encode(const std::string& filename) const = 0;
 };
 
 // abstract enigma machine for N ASCII symbols
 // rotor and reflector have size N
-template <uint8_t N>
-class AbstractEnigma : public IEnigma {
+class TextEnigma : public IEnigma {
   public:
-    using rotPtr = Rotor<N>*;
-    using refPtr = Rotor<N>*;
+    // default enigma with 3 rotors and reflector
+    TextEnigma() {
+      rotors_.push_back(new TextRotor("enigma/config/rotor1.json"));
+      rotors_.push_back(new TextRotor("enigma/config/rotor2.json"));
+      rotors_.push_back(new TextRotor("enigma/config/rotor3.json"));
 
-    virtual ~AbstractEnigma() {}
+      reflector_ = new TextReflector("enigma/config/reflector.json");
+    }
 
-    friend std::ostream& operator<<(std::ostream& os, const AbstractEnigma& enigma) {
-      os << "ROTORS:\n";
-      for (auto pr : rotors_) {
-        os << *pr;
+    TextEnigma(uint8_t n) {
+      rotors_.reserve(n);
+      /* while (n--) { */
+      /*   rotors_.push_back(TextRotor::createRotor()); */
+      /* } */
+      /* reflector_.push_back(TextReflector::createReflector()); */
+    }
+
+    TextEnigma(const TextEnigma& other) {
+      for (auto& ptr : other.rotors_) {
+        rotors_.push_back(new TextRotor(*ptr));
+      }
+      reflector_ = new TextReflector(*other.reflector_);
+    }
+
+    TextEnigma(TextEnigma&& other) noexcept {
+      for (auto& ptr : other.rotors_) {
+        rotors_.push_back(ptr);
+        ptr = nullptr;
       }
 
-      os << "REFLECTOR:\n";
-      os << *reflector;
+      reflector_ = other.reflector_;
+      other.reflector_ = nullptr;
+    }
+
+    TextEnigma& operator=(const TextEnigma& other) {
+      if (this != &other) {
+        destroy();
+        rotors_.clear();
+
+        for (auto& ptr : other.rotors_) {
+          rotors_.push_back(new TextRotor(*ptr));
+        }
+        reflector_ = new TextReflector(*other.reflector_);
+      }
+
+      return *this;
+    }
+
+    TextEnigma& operator=(TextEnigma&& other) noexcept {
+      if (this != &other) {
+        rotors_.swap(other.rotors_);
+        std::swap(reflector_, other.reflector_);
+      }
+
+      return *this;
+    }
+
+    ~TextEnigma() {
+      destroy();
+    }
+
+    void encode(const std::string& filename) const override {
+      std::ifstream f(filename);
+      if (f.rdstate() == std::ios_base::failbit)
+        throw std::invalid_argument("Can't open file: " + filename);
+
+      std::string fname = filename.substr(0, filename.find_last_of('.'));
+
+      std::ofstream o(fname + "_encoded");
+      if (o.rdstate() == std::ios_base::failbit)
+        throw std::runtime_error("Creating file error");
+
+      char c;
+      while (f >> std::noskipws >> c) {
+        if (std::isalpha(c))
+          c = encodeChar(c);
+        
+        o << c;
+      }
+    }
+
+
+    friend std::ostream& operator<<(std::ostream& os, const TextEnigma& enigma) {
+      os << "ROTORS:\n";
+      for (const auto& pr : enigma.rotors_) {
+        os << *pr << "\n";
+      }
+
+      os << "\nREFLECTOR:\n";
+      os << *enigma.reflector_;
 
       return os;
     }
 
 
   protected:
-    vector<rotPtr> rotors_;
-    refPtr reflector_;
+    std::vector<TextRotor*> rotors_;
+    TextReflector* reflector_;
+
+  private:
+    void destroy() noexcept {
+      for (auto& ptr : rotors_)
+        delete(ptr);
+      delete reflector_;
+    }
+
+    char encodeChar(char c) const {
+      std::cout << *this << "\n";
+      c = std::tolower(c);
+      std::pair<uint8_t, bool> p = {c - 'a', true};
+
+      for (auto rPtr = rotors_.rbegin(); rPtr != rotors_.rend(); ++rPtr) {
+        std::cout << (char)(p.first + 'a') << "-->";
+        p = (*rPtr)->get(p);
+      }
+      std::cout << (char)(p.first + 'a') << "-->";
+
+      p = reflector_->get(p);
+
+      // DOUBLE TURNOVER DONT FORGET
+      /* p.second = false; */
+
+      for (auto& ptr : rotors_) {
+        std::cout << (char)(p.first + 'a') << "-->";
+        p.first = ptr->getReverse(p.first);
+      }
+      std::cout << (char)(p.first + 'a') << "\n";
+
+      c = p.first;
+
+      return c + 'a';
+    }
 };
 
 #endif // _ENIGMA_H_

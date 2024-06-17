@@ -18,7 +18,7 @@ class TextRotor final : public AbstractRotor<26> {
     using AbstractRotor<26>::name_;
     // such default ctor which just makes useless rotor with no cipher
     // A-A, B-B, ..., Z-Z
-    TextRotor() : AbstractRotor<26>(), turnover_{0} {
+    TextRotor() : turnover_{0} {
       std::iota(std::begin(wiring_), std::end(wiring_), 0);
     }
 
@@ -26,18 +26,21 @@ class TextRotor final : public AbstractRotor<26> {
       TextRotor::setConfig(configfile);
     }
 
+    TextRotor(const TextRotor& other) : AbstractRotor(other),
+                                        turnover_{other.turnover_} {}
+
     [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override {
       // сначала поворот, потом сигнал
-      /* bool spinNext = false; */
-      /* if (c.second == true) { */
-      /*   if (wiring_[0] == turnover_) { */
-      /*     spinNext = true; */
-      /*     std::cout << "Spin next ROTOR\n"; */
-      /*   } */
-      /*   makeSpins(1); */
-      /* } */
+      bool spinNext = false;
+      if (c.second == true) {
+        if (wiring_[0] == turnover_) {
+          spinNext = true;
+          std::cout << "Spin next ROTOR\n";
+        }
+        makeSpins(1);
+      }
 
-      return std::make_pair(wiring_[c.first], false);
+      return std::make_pair(wiring_[c.first], spinNext);
     }
 
     [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {

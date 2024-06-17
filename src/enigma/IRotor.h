@@ -22,6 +22,13 @@ class AbstractRotor : public IRotor {
       return os;
     }
 
+    AbstractRotor() = default;
+
+    AbstractRotor(const AbstractRotor& other) : name_{other.name_} {
+      for (int i = 0; i != N; ++i)
+        wiring_[i] = other.wiring_[i];
+    }
+
     virtual ~AbstractRotor() {};
 
   protected:
