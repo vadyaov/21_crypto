@@ -4,6 +4,7 @@
 #include <string>
 #include <array>
 #include <iostream>
+#include <iomanip>
 
 class IRotor {
   public:
@@ -13,6 +14,19 @@ class IRotor {
 
     virtual ~IRotor() {};
 };
+
+  char toUpper(uint8_t offset) {
+    return static_cast<char>(offset + 'A');
+  }
+
+  char toLower(uint8_t offset) {
+    return static_cast<char>(offset + 'a');
+  }
+
+  uint8_t toOffset(char c) {
+    return static_cast<uint8_t>(std::tolower(c) - 'a');
+  }
+
 
 template<uint8_t N>
 class AbstractRotor : public IRotor {
@@ -25,20 +39,25 @@ class AbstractRotor : public IRotor {
     AbstractRotor() = default;
 
     AbstractRotor(const AbstractRotor& other) : name_{other.name_} {
-      for (int i = 0; i != N; ++i)
-        wiring_[i] = other.wiring_[i];
     }
 
     virtual ~AbstractRotor() {};
 
   protected:
     std::string name_;
+    std::array<uint8_t, N> entry_;
     std::array<uint8_t, N> wiring_;
 
   private:
     void dump(std::ostream& os) const {
-      for (auto w : wiring_) {
-        os << char(w + 'A');
+      os << std::setw(5) << name_ << ':';
+      for (uint8_t e : entry_) {
+        os << toUpper(e);
+      }
+      std::cout << "\n";
+      os << std::setw(5) << name_ << ':';
+      for (uint8_t w : wiring_) {
+        os << toUpper(w);
       }
     }
 };

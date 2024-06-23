@@ -6,12 +6,19 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-class TextReflector : public AbstractRotor<26> {
-  using AbstractRotor<26>::wiring_;
-  using AbstractRotor<26>::name_;
+extern const uint8_t N;
+
+class TextReflector : public AbstractRotor<N> {
+  using AbstractRotor<N>::wiring_;
+  using AbstractRotor<N>::name_;
 
   public:
-    TextReflector(const std::string& configfile) {
+    TextReflector() {
+      std::iota(std::begin(entry_), std::end(entry_), 0);
+      std::iota(std::begin(wiring_), std::end(wiring_), 0);
+    }
+
+    TextReflector(const std::string& configfile) : TextReflector() {
       TextReflector::setConfig(configfile);
     }
 

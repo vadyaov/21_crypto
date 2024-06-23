@@ -1,8 +1,9 @@
 {
   "name": "III",
   "wiring": "BDFHJLCPRTXVZNYEIWGAKMUSQO",
+  "ring": "A",
   "start": "A",
-  "notch": "A"
+  "turnover": "V"
 }
 
 

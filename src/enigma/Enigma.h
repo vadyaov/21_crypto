@@ -16,7 +16,7 @@ class IEnigma {
 class TextEnigma : public IEnigma {
   public:
     // default enigma with 3 rotors and reflector
-    TextEnigma() {
+    TextEnigma() : reflector_{nullptr} {
       rotors_.push_back(new TextRotor("enigma/config/rotor1.json"));
       rotors_.push_back(new TextRotor("enigma/config/rotor2.json"));
       rotors_.push_back(new TextRotor("enigma/config/rotor3.json"));
@@ -98,13 +98,14 @@ class TextEnigma : public IEnigma {
 
 
     friend std::ostream& operator<<(std::ostream& os, const TextEnigma& enigma) {
-      os << "ROTORS:\n";
+      if (enigma.reflector_) {
+        os << *enigma.reflector_;
+      }
+      os << "\n";
+
       for (const auto& pr : enigma.rotors_) {
         os << *pr << "\n";
       }
-
-      os << "\nREFLECTOR:\n";
-      os << *enigma.reflector_;
 
       return os;
     }
@@ -122,26 +123,28 @@ class TextEnigma : public IEnigma {
     }
 
     char encodeChar(char c) const {
+      /* std::cout << "ROTORS before right->left way:\n"; */
       std::cout << *this << "\n";
-      c = std::tolower(c);
-      std::pair<uint8_t, bool> p = {c - 'a', true};
+
+      /* c = std::tolower(c); */
+      std::pair<uint8_t, bool> p = {toOffset(c), true};
 
       for (auto rPtr = rotors_.rbegin(); rPtr != rotors_.rend(); ++rPtr) {
-        std::cout << (char)(p.first + 'a') << "-->";
+        std::cout << toUpper(p.first) << "-->";
         p = (*rPtr)->get(p);
       }
-      std::cout << (char)(p.first + 'a') << "-->";
+      std::cout << toUpper(p.first) << "-->";
 
       p = reflector_->get(p);
 
       // DOUBLE TURNOVER DONT FORGET
-      /* p.second = false; */
+      p.second = false;
 
       for (auto& ptr : rotors_) {
-        std::cout << (char)(p.first + 'a') << "-->";
+        std::cout << toUpper(p.first) << "-->";
         p.first = ptr->getReverse(p.first);
       }
-      std::cout << (char)(p.first + 'a') << "\n";
+      std::cout << toUpper(p.first) << "\n";
 
       c = p.first;
 

@@ -12,22 +12,28 @@
 
 using json = nlohmann::json;
 
-class TextRotor final : public AbstractRotor<26> {
+constexpr const uint8_t N = 26;
+
+class TextRotor final : public AbstractRotor<N> {
   public:
-    using AbstractRotor<26>::wiring_;
-    using AbstractRotor<26>::name_;
+    using AbstractRotor<N>::wiring_;
+    using AbstractRotor<N>::name_;
+    enum SpinSide {LEFT, RIGHT};
     // such default ctor which just makes useless rotor with no cipher
     // A-A, B-B, ..., Z-Z
-    TextRotor() : turnover_{0} {
+    TextRotor() : turnover_{0}, r_{0} {
+      std::iota(std::begin(entry_), std::end(entry_), 0);
       std::iota(std::begin(wiring_), std::end(wiring_), 0);
+      std::iota(std::begin(ring_), std::end(ring_), 0);
     }
 
     TextRotor(const std::string& configfile) : TextRotor() {
       TextRotor::setConfig(configfile);
     }
 
-    TextRotor(const TextRotor& other) : AbstractRotor(other),
-                                        turnover_{other.turnover_} {}
+    TextRotor(const TextRotor& other) : AbstractRotor<N>(other),
+                                        turnover_{other.turnover_},
+                                        r_{other.r_} {}
 
     [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override {
       // сначала поворот, потом сигнал
@@ -37,15 +43,33 @@ class TextRotor final : public AbstractRotor<26> {
           spinNext = true;
           std::cout << "Spin next ROTOR\n";
         }
-        makeSpins(1);
+        spin(entry_, LEFT);
+        spin(wiring_, LEFT);
+        spin(ring_, LEFT);
       }
 
-      return std::make_pair(wiring_[c.first], spinNext);
+      /* std::cout << "ROTORS CURR:\n"; */
+      /* std::cout << *this << "\n"; */
+      /* std::cout << "r_ = " << (int)r_ << "\n"; */
+      /* std::cout << " RING:"; */
+      /* for (uint8_t r : ring_) { */
+      /*   std::cout << toUpper(r); */
+      /* } */
+      /* std::cout << "\n"; */
+
+      /* std::cout << "wiring[c.first] = " << wiring_[c.first] << "\n"; */
+      uint8_t signalToRing = wiring_[c.first];
+      auto where = std::find(std::begin(ring_), std::end(ring_), signalToRing);
+      uint8_t dist = std::distance(std::begin(ring_), where);
+      /* std::cout << "dist = " << (int)dist << "\n"; */
+
+      return std::make_pair((dist + r_) % N, spinNext);
     }
 
     [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {
+      uint8_t signalToRotor = ring_[c];
       return std::distance(std::begin(wiring_),
-                           std::find(std::begin(wiring_), std::end(wiring_), c));
+                           std::find(std::begin(wiring_), std::end(wiring_), signalToRotor));
     }
 
     void setConfig(const std::string& filename) override {
@@ -58,38 +82,71 @@ class TextRotor final : public AbstractRotor<26> {
 
       std::string w = data["wiring"];
 
-      if (w.length() != 26) throw std::invalid_argument("");
+      if (w.length() != N) throw std::invalid_argument("Bad wiring");
 
-      int i = 0;
-      for (char c : w) {
-        wiring_[i++] = std::tolower(c) - 'a';
+      for (int i = 0; i != N; ++i) {
+        wiring_[i] = toOffset(w[i]);
       }
 
       std::string start = data["start"];
-      std::string notch = data["notch"];
+      std::string ring = data["ring"]; // меняется таблица подстановок -- leftSpin
+      std::string turn = data["turnover"]; // pos to advance next rotor
 
-      int pos = 26 - (std::tolower(notch[0]) - 'a');
-      if (pos == 26) pos = 0;
-      turnover_ = wiring_[pos];
-      std::cout << char(turnover_ + 'a') << "\n";
+      r_ = toOffset(ring[0]);
 
-      makeSpins(std::tolower(start[0]) - 'a');
+      int s = toOffset(start[0]);
+      /* std::cout << "START = " << toUpper(s) << "\n"; */
+      if (s > N / 2) {
+        for (int i = 0; i != N - s; ++i) {
+          /* std::cout << "HERE\n"; */
+          spin(ring_, RIGHT);
+          spin(wiring_, RIGHT);
+          spin(entry_, RIGHT);
+        }
+      } else {
+        for (int i = 0; i != s; ++i) {
+          spin(ring_, LEFT);
+          spin(wiring_, LEFT);
+          spin(entry_, LEFT);
+        }
+      }
+
+      for (int i = 0; i != r_; ++i) {
+        spin(wiring_, RIGHT);
+        spin(entry_, RIGHT);
+      }
+
+      int turnover_pos = (std::tolower(turn[0]) - 'a') ? N - (std::tolower(turn[0]) - 'a') : 0;
+      turnover_ = wiring_[turnover_pos];
     }
 
   private:
     uint8_t turnover_;
+    uint8_t r_;
+    std::array<uint8_t, N> ring_;
 
-    void makeSpins(int count) {
-      if (!count) return;
-      std::cout << "\nMAKE " << count << "SPINs FOR " << name_ << "\n";
-      std::vector<uint8_t> tmp;
-      std::copy(std::rbegin(wiring_), std::rbegin(wiring_) + count, std::back_inserter(tmp));
+    void spin(std::array<uint8_t, N>& arr, SpinSide side) {
+      std::cout << "\nMAKE ";
+      if (side == RIGHT) std::cout << " right ";
+      else std::cout << " left ";
 
-      for (int i = 25; i >= count; --i) {
-        wiring_[i] = wiring_[i - count];
+      std::cout << "SPIN FOR " << name_ << "\n";
+
+      uint8_t tmp;
+
+      if (side == RIGHT) {
+        tmp = arr[N - 1];
+        for (int i = N - 1; i >= 1; --i) {
+          arr[i] = arr[i - 1];
+        }
+        arr[0] = tmp;
+      } else {
+        tmp = arr[0];
+        for (int i = 0; i != N - 1; ++i) {
+          arr[i] = arr[i + 1];
+        }
+        arr[N - 1] = tmp;
       }
-
-      std::copy(std::begin(tmp), std::end(tmp), std::begin(wiring_));
     }
 };
 
