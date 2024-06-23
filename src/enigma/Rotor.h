@@ -39,7 +39,7 @@ class TextRotor final : public AbstractRotor<N> {
       // сначала поворот, потом сигнал
       bool spinNext = false;
       if (c.second == true) {
-        if (wiring_[0] == turnover_) {
+        if (ring_[0] == turnover_) {
           spinNext = true;
           std::cout << "Spin next ROTOR\n";
         }
@@ -116,8 +116,8 @@ class TextRotor final : public AbstractRotor<N> {
         spin(entry_, RIGHT);
       }
 
-      int turnover_pos = (std::tolower(turn[0]) - 'a') ? N - (std::tolower(turn[0]) - 'a') : 0;
-      turnover_ = wiring_[turnover_pos];
+      /* int turnover_pos = (std::tolower(turn[0]) - 'a') ? N - (std::tolower(turn[0]) - 'a') : 0; */
+      turnover_ = toOffset(turn[0]);
     }
 
   private:
