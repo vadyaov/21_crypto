@@ -104,6 +104,10 @@ class TextEnigma : public IEnigma {
       os << "\n";
 
       for (const auto& pr : enigma.rotors_) {
+        os << pr->position();
+      }
+      os << "\n";
+      for (const auto& pr : enigma.rotors_) {
         os << *pr << "\n";
       }
 

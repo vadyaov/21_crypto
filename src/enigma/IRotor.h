@@ -6,6 +6,18 @@
 #include <iostream>
 #include <iomanip>
 
+inline char toUpper(uint8_t offset) noexcept {
+  return static_cast<char>(offset + 'A');
+}
+
+inline char toLower(uint8_t offset) noexcept {
+  return static_cast<char>(offset + 'a');
+}
+
+inline uint8_t toOffset(char c) noexcept {
+  return static_cast<uint8_t>(std::tolower(c) - 'a');
+}
+
 class IRotor {
   public:
     [[nodiscard]] virtual std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) = 0;
@@ -14,19 +26,6 @@ class IRotor {
 
     virtual ~IRotor() {};
 };
-
-  char toUpper(uint8_t offset) {
-    return static_cast<char>(offset + 'A');
-  }
-
-  char toLower(uint8_t offset) {
-    return static_cast<char>(offset + 'a');
-  }
-
-  uint8_t toOffset(char c) {
-    return static_cast<uint8_t>(std::tolower(c) - 'a');
-  }
-
 
 template<uint8_t N>
 class AbstractRotor : public IRotor {
