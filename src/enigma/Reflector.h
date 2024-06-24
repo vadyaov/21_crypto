@@ -22,8 +22,12 @@ class TextReflector : public AbstractRotor<N> {
       TextReflector::setConfig(configfile);
     }
 
-    [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override {
-      return std::make_pair(wiring_[c.first], false);
+    [[nodiscard]] RotorData& get(RotorData& c) override {
+      c.encoded = wiring_[c.encoded];
+      c.prevSpin = false;
+      c.currSpin = false;
+      return c;
+      /* return std::make_pair(wiring_[c.first], false); */
     }
 
     [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {

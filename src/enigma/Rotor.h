@@ -35,7 +35,7 @@ class TextRotor final : public AbstractRotor<N> {
                                         turnover_{other.turnover_},
                                         r_{other.r_} {}
 
-    [[nodiscard]] std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) override {
+    [[nodiscard]] RotorData& get(RotorData& c) override {
       // !! need to do double stepping !!
 
       /*
@@ -47,8 +47,10 @@ class TextRotor final : public AbstractRotor<N> {
        * KDO KDP, KDQ, KER, LFS, LFT, LFU
        */
 
+      if (ring_[0] == turnover_) c.currSpin = true; // double stepping
       bool spinNext = false;
-      if (c.second == true) {
+      if (c.currSpin == true) {
+        c.prevSpin = true;
         if (ring_[0] == turnover_) spinNext = true;
 
         spin(entry_, LEFT);
@@ -57,11 +59,14 @@ class TextRotor final : public AbstractRotor<N> {
       }
 
       // can be upgraded to one line return
-      uint8_t signalToRing = wiring_[c.first];
+      uint8_t signalToRing = wiring_[c.encoded];
       auto where = std::find(std::begin(ring_), std::end(ring_), signalToRing);
       uint8_t dist = std::distance(std::begin(ring_), where);
 
-      return std::make_pair((dist + r_) % N, spinNext);
+      c.encoded = (dist + r_) % N;
+      c.currSpin = spinNext;
+
+      return c;
     }
 
     [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {
@@ -153,14 +158,14 @@ class TextRotor final : public AbstractRotor<N> {
       side == RIGHT ? rightShift(arr) : leftShift(arr);
     }
 
-    void nSpin(std::array<uint8_t, N>& arr, SpinSide side, unsigned int n) {
+    void nSpin(std::array<uint8_t, N>& arr, SpinSide side, int n) {
       if (n > N / 2) {
         side = (side == LEFT) ? RIGHT : LEFT;
         n = N - n;
       }
 
       for (int i = 0; i != n; ++i) {
-        spin(arr, side, n);
+        spin(arr, side);
       }
     }
 };

@@ -88,11 +88,17 @@ class TextEnigma : public IEnigma {
         throw std::runtime_error("Creating file error");
 
       char c;
-      while (f >> std::noskipws >> c) {
+      int count = 0;
+      while (f /*>> std::noskipws*/ >> c) {
         if (std::isalpha(c))
           c = encodeChar(c);
         
         o << c;
+        count++;
+        if (count == 5) {
+          o << ' ';
+          count = 0;
+        }
       }
     }
 
@@ -131,28 +137,27 @@ class TextEnigma : public IEnigma {
       std::cout << *this << "\n";
 
       /* c = std::tolower(c); */
-      std::pair<uint8_t, bool> p = {toOffset(c), true};
+      RotorData p = {toOffset(c), false, true};
 
       for (auto rPtr = rotors_.rbegin(); rPtr != rotors_.rend(); ++rPtr) {
-        std::cout << toUpper(p.first) << "-->";
+        std::cout << toUpper(p.encoded) << "-->";
         p = (*rPtr)->get(p);
       }
-      std::cout << toUpper(p.first) << "-->";
+      std::cout << toUpper(p.encoded) << "-->";
 
       p = reflector_->get(p);
 
-      // DOUBLE TURNOVER DONT FORGET
-      p.second = false;
+      /* p.second = false; */
 
       for (auto& ptr : rotors_) {
-        std::cout << toUpper(p.first) << "-->";
-        p.first = ptr->getReverse(p.first);
+        std::cout << toUpper(p.encoded) << "-->";
+        p.encoded = ptr->getReverse(p.encoded);
       }
-      std::cout << toUpper(p.first) << "\n";
+      std::cout << toUpper(p.encoded) << "\n";
 
-      c = p.first;
+      c = p.encoded;
 
-      return c + 'a';
+      return toLower(c);
     }
 };
 

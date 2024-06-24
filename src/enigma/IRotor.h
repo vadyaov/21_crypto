@@ -18,9 +18,15 @@ inline uint8_t toOffset(char c) noexcept {
   return static_cast<uint8_t>(std::tolower(c) - 'a');
 }
 
+struct RotorData {
+  uint8_t encoded;
+  bool prevSpin;
+  bool currSpin;
+};
+
 class IRotor {
   public:
-    [[nodiscard]] virtual std::pair<uint8_t, bool> get(std::pair<uint8_t, bool> c) = 0;
+    [[nodiscard]] virtual RotorData& get(RotorData& c) = 0;
     [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const = 0;
     virtual void setConfig(const std::string& filename) = 0;
 
