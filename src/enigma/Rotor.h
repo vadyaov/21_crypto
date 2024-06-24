@@ -36,8 +36,6 @@ class TextRotor final : public AbstractRotor<N> {
                                         r_{other.r_} {}
 
     [[nodiscard]] RotorData& get(RotorData& c) override {
-      // !! need to do double stepping !!
-
       /*
        *  The middle rotor will advance on the next step of the first rotor
        *  a second time in a row, if the middle rotor is in its own turnover position.
@@ -47,7 +45,11 @@ class TextRotor final : public AbstractRotor<N> {
        * KDO KDP, KDQ, KER, LFS, LFT, LFU
        */
 
-      if (ring_[0] == turnover_) c.currSpin = true; // double stepping
+      if (ring_[0] == turnover_) {
+        std::cout << "DOUBLE STEP\n";
+        c.currSpin = true; // double stepping
+      }
+
       bool spinNext = false;
       if (c.currSpin == true) {
         c.prevSpin = true;
@@ -70,9 +72,17 @@ class TextRotor final : public AbstractRotor<N> {
     }
 
     [[nodiscard]] virtual uint8_t getReverse(uint8_t c) const override {
-      uint8_t signalToRotor = ring_[c];
+      uint8_t k = r_;
+      while (k-->0)
+        c = !c ? N - 1 : c - 1;
+
+      /* uint8_t signalToRotor = ring_[c]; */
+      /* auto where = std::find(std::begin(wiring_), std::end(wiring_), signalToRotor); */
+      /* uint8_t dist = std::distance(std::begin(wiring_), where); */
+      /* return dist; */
+
       return std::distance(std::begin(wiring_),
-             std::find(std::begin(wiring_), std::end(wiring_), signalToRotor));
+                           std::find(std::begin(wiring_), std::end(wiring_), ring_[c]));
     }
 
     void setConfig(const std::string& filename) override {

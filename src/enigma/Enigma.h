@@ -88,16 +88,16 @@ class TextEnigma : public IEnigma {
         throw std::runtime_error("Creating file error");
 
       char c;
-      int count = 0;
-      while (f /*>> std::noskipws*/ >> c) {
-        if (std::isalpha(c))
+      int placeSpace = 0;
+      while (f >> c) {
+        if (std::isalpha(c)) {
           c = encodeChar(c);
-        
+        }
         o << c;
-        count++;
-        if (count == 5) {
+        placeSpace++;
+        if (placeSpace == 5) {
           o << ' ';
-          count = 0;
+          placeSpace = 0;
         }
       }
     }
