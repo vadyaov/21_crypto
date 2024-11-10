@@ -11,11 +11,8 @@ class IEnigma {
     virtual void encode(const std::string& filename) const = 0;
 };
 
-// abstract enigma machine for N ASCII symbols
-// rotor and reflector have size N
 class TextEnigma : public IEnigma {
   public:
-    // default enigma with 3 rotors and reflector
     TextEnigma() : reflector_{nullptr} {
       rotors_.push_back(new TextRotor("enigma/config/rotor1.json"));
       rotors_.push_back(new TextRotor("enigma/config/rotor2.json"));
@@ -26,10 +23,10 @@ class TextEnigma : public IEnigma {
 
     TextEnigma(uint8_t n) {
       rotors_.reserve(n);
-      /* while (n--) { */
-      /*   rotors_.push_back(TextRotor::createRotor()); */
-      /* } */
-      /* reflector_.push_back(TextReflector::createReflector()); */
+      while (n--) {
+        rotors_.push_back(TextRotor::createRotor());
+      }
+      reflector_.push_back(TextReflector::createReflector());
     }
 
     TextEnigma(const TextEnigma& other) {
@@ -139,9 +136,9 @@ class TextEnigma : public IEnigma {
       /* c = std::tolower(c); */
       RotorData p = {toOffset(c), false, true};
 
-      for (auto rPtr = rotors_.rbegin(); rPtr != rotors_.rend(); ++rPtr) {
+      for (int i = rotors_.size() - 1; i >= 0; --i) {
         std::cout << toUpper(p.encoded) << "-->";
-        p = (*rPtr)->get(p);
+        p = rPtr[i]->get(p);
       }
       std::cout << toUpper(p.encoded) << "-->";
 
