@@ -9,7 +9,8 @@
 
 #include <fstream>
 
-using std::map;
+#include <iostream>
+
 using std::unordered_map;
 using std::string;
 using std::vector;
@@ -24,7 +25,7 @@ using sw_pair = std::pair<string, size_t>;
 // Creates binary alphabet from weighted alphabet
 class Huffman {
   public:
-    Huffman() : tree_{nullptr} {}
+    Huffman() = default;
 
     void Init(const unordered_map<char, size_t>& alphabet) {
       for (const auto& [c, freq] : alphabet) {
@@ -32,8 +33,11 @@ class Huffman {
         new_pair.first = string(1, c);
         new_pair.second = freq;
 
-        state_.push(new_pair);
+        Node* new_node = new Node(new_pair);
+        state_.push(new_node);
       }
+      std::cout << "Init Success\n";
+      std::cout << "state_.size() = " << state_.size() << "\n";
     }
 
     // Creates tree while number of active elements in queue > 1
@@ -44,29 +48,37 @@ class Huffman {
       }
 
       while (state_.size() != 1) {
-        auto first_min = state_.top();
+        Node* first_min_node = state_.top();
         state_.pop();
-        auto second_min = state_.top();
+        Node* second_min_node = state_.top();
         state_.pop();
 
+        std::cout << "First Min Node: " << first_min_node->value_.first << ": " << first_min_node->value_.second << "\n";
+        std::cout << "Secon Min Node: " << second_min_node->value_.first << ": " << second_min_node->value_.second << "\n";
+
         // dangerous string because of possible (size_t + size_t) overflow
-        sw_pair new_val(first_min.first + second_min.first,
-            first_min.second + second_min.second);
-        // first insertion
-        if (tree_ == nullptr) {
-          Node* left_child = new Node(first_min);
-          Node* right_child = new Node(second_min);
-          Node* parent = new Node(new_val, left_child, right_child);
-          tree_ = parent;
-        } else {
-        }
+        sw_pair new_val(first_min_node->value_.first + second_min_node->value_.first,
+            first_min_node->value_.second + second_min_node->value_.second);
+        Node* new_node = new Node(new_val, first_min_node, second_min_node);
+        state_.push(new_node);
+        std::cout << "New Node: " << new_node->value_.first << ": " << new_node->value_.second << "\n";
       }
     }
 
     // Считаем, что Init() был вызван
     // TODO
     void GetBinaryAlphabet(unordered_map<char, string>& out) {
-
+      Node* root = state_.top();
+      string bits;
+      auto inorderTraversal = [&out](const Node* root, const Node* parent, string& bits) -> void {
+        if (root == nullptr) {
+          return;
+        }
+        inorderTraversal(root->left, root, bits);
+        inorderTraversal(root->right, root, bits);
+        // TODO
+      };
+      inorderTraversal(root, nullptr, bits);
     }
 
   private:
@@ -80,14 +92,16 @@ class Huffman {
       Node* right_;
     };
 
+    struct GreaterCmp {
+      bool operator()(const Node* lhs, const Node* rhs) {
+        if (lhs->value_.second > rhs->value_.second) return true;
+        else if (lhs->value_.second < rhs->value_.second) return false;
+        return lhs->value_.first < rhs->value_.first;
+      }
+    };
+
     // current huffman state
-    // Все таки я уверен что поле tree_ не нужно, все можно сделать с помощью одной
-    // структуры state_ - очередь с приоритеом, но нужно вместо пар хранить узлы Node*
-    // и переопределить оператор сравнения для Node, потому что затем эти узлы будут
-    // сливаться и в итоге останется один, так что поддерживать доп структуру дерева не нужно,
-    // она будет встроена внутрь state_
-    priority_queue<sw_pair, vector<sw_pair>, std::greater<sw_pair>> state_;
-    Node* tree_;
+    priority_queue<Node*, vector<Node*>, GreaterCmp> state_;
 };
 
 // read file and use Huffman:
@@ -117,7 +131,7 @@ class HuffmanEncoder {
         mp[ch]++;
       }
 
-      if (istr_.fail())
+      if (!istr_.eof())
         throw std::runtime_error("Unexpected error while reading ");
       
       // init huffman with alphabet
@@ -131,6 +145,7 @@ class HuffmanEncoder {
       istr_.seekg(0); // set pointer to the start
 
       while (istr_.get(ch)) {
+        std::cout << "ch = " << ch << "\n";
         auto it = binary_alphabet.find(ch);
         if (it == binary_alphabet.end()) {
           throw std::runtime_error("Unexpected exception. Abort.");
