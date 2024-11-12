@@ -8,8 +8,10 @@
 #include <functional>
 
 #include <fstream>
+#include <filesystem>
 
 #include <iostream>
+#include <cassert>
 
 using std::unordered_map;
 using std::string;
@@ -19,6 +21,8 @@ using std::priority_queue;
 using std::ifstream;
 using std::ofstream;
 
+namespace fs = std::filesystem;
+
 // string-weight pair
 using sw_pair = std::pair<string, size_t>;
 
@@ -26,6 +30,10 @@ using sw_pair = std::pair<string, size_t>;
 class Huffman {
   public:
     Huffman() = default;
+    ~Huffman() {
+      assert(state_.size() == 1);
+      destroy(state_.top());
+    }
 
     void Init(const unordered_map<char, size_t>& alphabet) {
       for (const auto& [c, freq] : alphabet) {
@@ -37,7 +45,7 @@ class Huffman {
         state_.push(new_node);
       }
       std::cout << "Init Success\n";
-      std::cout << "state_.size() = " << state_.size() << "\n";
+      // std::cout << "state_.size() = " << state_.size() << "\n";
     }
 
     // Creates tree while number of active elements in queue > 1
@@ -53,16 +61,18 @@ class Huffman {
         Node* second_min_node = state_.top();
         state_.pop();
 
-        std::cout << "First Min Node: " << first_min_node->value_.first << ": " << first_min_node->value_.second << "\n";
-        std::cout << "Secon Min Node: " << second_min_node->value_.first << ": " << second_min_node->value_.second << "\n";
+        // std::cout << "First Min Node: " << first_min_node->value_.first << ": " << first_min_node->value_.second << "\n";
+        // std::cout << "Secon Min Node: " << second_min_node->value_.first << ": " << second_min_node->value_.second << "\n";
 
         // dangerous string because of possible (size_t + size_t) overflow
         sw_pair new_val(first_min_node->value_.first + second_min_node->value_.first,
             first_min_node->value_.second + second_min_node->value_.second);
         Node* new_node = new Node(new_val, first_min_node, second_min_node);
         state_.push(new_node);
+
         std::cout << "New Node: " << new_node->value_.first << ": " << new_node->value_.second << "\n";
       }
+      assert(state_.size() == 1);
     }
 
     // Считаем, что Init() был вызван
@@ -102,6 +112,13 @@ class Huffman {
       inorderTraversal(root->right_, bits + '1', out);
     };
 
+    void destroy(Node* root) {
+      if (root == nullptr) return;
+      destroy(root->left_);
+      destroy(root->right_);
+      delete root;
+    }
+
     // current huffman state
     priority_queue<Node*, vector<Node*>, GreaterCmp> state_;
 };
@@ -114,17 +131,39 @@ class Huffman {
 // - encodes file using binary alphabet
 class HuffmanEncoder {
   public:
-    HuffmanEncoder(const string& input, const string& output) :
-      istr_(input), ostr_(output) {
-      if (!istr_) throw std::runtime_error(input + " does not exist.");
-      if (!ostr_) throw std::runtime_error("Can't open file " + output);
-    }
+    HuffmanEncoder() = default;
 
     ~HuffmanEncoder() {
       istr_.close();
+      config_.close();
       ostr_.close();
     }
     
+    void InitIO(const string& in_path) {
+      in_ = in_path; // already absolute path
+      istr_.open(in_);
+      if (!istr_) throw std::runtime_error(in_ + " does not exists.");
+
+      // create name for encoded file
+      const auto name = in_path.substr(in_path.find_last_of('/') + 1);
+      auto const pos = name.find_last_of('.');
+      if (pos != name.npos) {
+        out_ = name.substr(0, pos) + "_encoded" + name.substr(pos);
+      } else {
+        out_ = name + "_encoded";
+      }
+    }
+
+    // init path for future config file
+    // path should be a directory
+    void InitConfigDir(const string& path) { 
+      InitDir(path, cfg_dir_);
+    }
+
+    void InitOutDir(const string& path) { 
+      InitDir(path, out_);
+    }
+
     void Encode() {
       // read file and create alphabet
       unordered_map<char, size_t> mp;
@@ -141,6 +180,7 @@ class HuffmanEncoder {
       huffman_.CreateTree();
 
       unordered_map<char, string> binary_alphabet = huffman_.GetBinaryAlphabet();
+
       for (const auto& [ch, code] : binary_alphabet) {
         std::cout << ch << ": " << code << "\n";
       }
@@ -157,9 +197,24 @@ class HuffmanEncoder {
       }
     }
   private:
+    string in_;
+    string out_;
+    string cfg_dir_;
+
+    // TODO убрать, вынести внутрь методов
     ifstream istr_;
+    ifstream config_;
     ofstream ostr_;
+
     Huffman huffman_;
+
+    void InitDir(const string& path, string& s) {
+      fs::path p(path);
+      if (!fs::exists(p)) throw std::runtime_error(path + " does not exist.");
+      if (!fs::is_directory(p)) throw std::runtime_error(path + " is not a directory.");
+
+      s = path;
+    }
 };
 
 bool operator<(const sw_pair& lhs, const sw_pair& rhs) {
