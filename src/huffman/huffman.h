@@ -66,19 +66,10 @@ class Huffman {
     }
 
     // Считаем, что Init() был вызван
-    // TODO
-    void GetBinaryAlphabet(unordered_map<char, string>& out) {
-      Node* root = state_.top();
-      string bits;
-      auto inorderTraversal = [&out](const Node* root, const Node* parent, string& bits) -> void {
-        if (root == nullptr) {
-          return;
-        }
-        inorderTraversal(root->left, root, bits);
-        inorderTraversal(root->right, root, bits);
-        // TODO
-      };
-      inorderTraversal(root, nullptr, bits);
+    unordered_map<char, string> GetBinaryAlphabet() const {
+      unordered_map<char, string> alphabet;
+      inorderTraversal(state_.top(), "", alphabet);
+      return alphabet;
     }
 
   private:
@@ -98,6 +89,17 @@ class Huffman {
         else if (lhs->value_.second < rhs->value_.second) return false;
         return lhs->value_.first < rhs->value_.first;
       }
+    };
+
+    void inorderTraversal(const Node* root, string bits, unordered_map<char, string>& out) {
+      if (root == nullptr) {
+        return;
+      }
+      if (root->left_ == nullptr && root->right_ == nullptr) {
+        out[root->value_.first[0]] = bits;
+      }
+      inorderTraversal(root->left_, bits + '0', out);
+      inorderTraversal(root->right_, bits + '1', out);
     };
 
     // current huffman state
@@ -138,14 +140,15 @@ class HuffmanEncoder {
       huffman_.Init(mp);
       huffman_.CreateTree();
 
-      unordered_map<char, string> binary_alphabet;
-      huffman_.GetBinaryAlphabet(binary_alphabet);
+      unordered_map<char, string> binary_alphabet = huffman_.GetBinaryAlphabet();
+      for (const auto& [ch, code] : binary_alphabet) {
+        std::cout << ch << ": " << code << "\n";
+      }
       
       istr_.clear();  // reset stream state
       istr_.seekg(0); // set pointer to the start
 
       while (istr_.get(ch)) {
-        std::cout << "ch = " << ch << "\n";
         auto it = binary_alphabet.find(ch);
         if (it == binary_alphabet.end()) {
           throw std::runtime_error("Unexpected exception. Abort.");
