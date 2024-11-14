@@ -56,11 +56,6 @@ class Huffman {
       destroy(state_.top());
     }
 
-    ~Huffman() {
-      assert(state_.size() == 1);
-      destroy(state_.top());
-    }
-
     void Init(const unordered_map<char, size_t>& alphabet) {
       for (const auto& [c, freq] : alphabet) {
         sw_pair new_pair;
