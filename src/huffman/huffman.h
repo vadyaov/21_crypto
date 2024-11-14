@@ -1,6 +1,5 @@
 #pragma once
 
-#include <map>
 #include <unordered_map>
 #include <string>
 #include <queue>
@@ -10,6 +9,7 @@
 #include <fstream>
 
 #include <iostream>
+#include <cassert>
 
 using std::unordered_map;
 using std::string;
@@ -19,13 +19,42 @@ using std::priority_queue;
 using std::ifstream;
 using std::ofstream;
 
-// string-weight pair
 using sw_pair = std::pair<string, size_t>;
 
-// Creates binary alphabet from weighted alphabet
+[[nodiscard]] class Status {
+public:
+  enum Code {
+    OK = 0,
+    ERROR = 1,
+  };
+
+  Status(Code code, const std::string& msg) : code_(code), message_(msg) {}
+
+  static Status Success() {
+    return Status(OK, "OK");
+  }
+
+  bool ok() const {
+    return code_ == OK;
+  }
+
+  const std::string& message() const {
+    return message_;
+  }
+
+private:
+  Code code_;
+  std::string message_;
+};
+
 class Huffman {
   public:
     Huffman() = default;
+
+    ~Huffman() {
+      assert(state_.size() == 1);
+      destroy(state_.top());
+    }
 
     void Init(const unordered_map<char, size_t>& alphabet) {
       for (const auto& [c, freq] : alphabet) {
@@ -36,39 +65,29 @@ class Huffman {
         Node* new_node = new Node(new_pair);
         state_.push(new_node);
       }
-      std::cout << "Init Success\n";
-      std::cout << "state_.size() = " << state_.size() << "\n";
     }
 
-    // Creates tree while number of active elements in queue > 1
-    // TODO
     void CreateTree() {
-      if (state_.size() <= 1) {
-        // what should i do ?
-      }
-
       while (state_.size() != 1) {
         Node* first_min_node = state_.top();
         state_.pop();
         Node* second_min_node = state_.top();
         state_.pop();
 
-        std::cout << "First Min Node: " << first_min_node->value_.first << ": " << first_min_node->value_.second << "\n";
-        std::cout << "Secon Min Node: " << second_min_node->value_.first << ": " << second_min_node->value_.second << "\n";
-
-        // dangerous string because of possible (size_t + size_t) overflow
         sw_pair new_val(first_min_node->value_.first + second_min_node->value_.first,
             first_min_node->value_.second + second_min_node->value_.second);
         Node* new_node = new Node(new_val, first_min_node, second_min_node);
         state_.push(new_node);
-        std::cout << "New Node: " << new_node->value_.first << ": " << new_node->value_.second << "\n";
       }
     }
 
-    // Считаем, что Init() был вызван
     unordered_map<char, string> GetBinaryAlphabet() const {
       unordered_map<char, string> alphabet;
-      inorderTraversal(state_.top(), "", alphabet);
+      // if (state_.size() == 1) {
+      //   alphabet[state_.top()->value_.first[0]] = "0";
+      // } else {
+        inorderTraversal(state_.top(), "", alphabet);
+      // }
       return alphabet;
     }
 
@@ -91,7 +110,7 @@ class Huffman {
       }
     };
 
-    void inorderTraversal(const Node* root, string bits, unordered_map<char, string>& out) {
+    void inorderTraversal(const Node* root, string bits, unordered_map<char, string>& out) const {
       if (root == nullptr) {
         return;
       }
@@ -102,67 +121,100 @@ class Huffman {
       inorderTraversal(root->right_, bits + '1', out);
     };
 
-    // current huffman state
+    void destroy(Node* root) {
+      if (root == nullptr) return;
+      destroy(root->left_);
+      destroy(root->right_);
+      delete root;
+    }
+
     priority_queue<Node*, vector<Node*>, GreaterCmp> state_;
 };
 
-// read file and use Huffman:
-// - takes file from user
-// - reads file and makes alphabet
-// - give to huffman correct alphabet
-// - takes from huffman binary alphabet
-// - encodes file using binary alphabet
-class HuffmanEncoder {
+class HuffmanProcessor {
   public:
-    HuffmanEncoder(const string& input, const string& output) :
-      istr_(input), ostr_(output) {
-      if (!istr_) throw std::runtime_error(input + " does not exist.");
-      if (!ostr_) throw std::runtime_error("Can't open file " + output);
+    HuffmanProcessor() = default;
+
+    Status Encode(const std::string& inputPath, const std::string& outputPath, const std::string& cfgPath) {
+      ifstream istr(inputPath);
+      ofstream ostr(outputPath);
+      if (!istr) return Status(Status::ERROR, "Can't open " + inputPath);
+      if (!ostr) return Status(Status::ERROR, "Can't open " + outputPath);
+
+      unordered_map<char, size_t> frequency_map;
+      char ch;
+      while (istr.get(ch)) {
+        frequency_map[ch]++;
+      }
+
+      istr.clear();
+      istr.seekg(0);
+
+      huffman_.Init(frequency_map);
+      huffman_.CreateTree();
+      auto binaryAlphabet = huffman_.GetBinaryAlphabet();
+
+      Status status = SaveConfiguration(cfgPath, binaryAlphabet);
+      if (!status.ok()) return status;
+
+      while (istr.get(ch)) {
+        ostr << binaryAlphabet[ch];
+      }
+
+      return Status::Success();
     }
 
-    ~HuffmanEncoder() {
-      istr_.close();
-      ostr_.close();
+    Status Decode(const std::string& encodedPath, const std::string& cfgPath, const std::string& outputPath) {
+      ifstream encodedFile(encodedPath);
+      if (!encodedFile) return Status(Status::ERROR, "Can't open " + encodedPath);
+
+      ifstream cfgFile(cfgPath);
+      if (!cfgFile) return Status(Status::ERROR, "Can't open " + cfgPath);
+
+      ofstream decodedFile(outputPath);
+      if (!decodedFile) return Status(Status::ERROR, "Can't open " + outputPath);
+
+      unordered_map<std::string, char> reverseAlphabet;
+      Status status = LoadConfiguration(cfgPath, reverseAlphabet);
+      if (!status.ok()) return status;
+
+      string bitString;
+      char bit;
+      while (encodedFile.get(bit)) {
+        bitString += bit;
+        if (reverseAlphabet.count(bitString)) {
+          decodedFile << reverseAlphabet[bitString];
+          bitString.clear();
+        }
+      }
+
+      return Status::Success();
     }
     
-    void Encode() {
-      // read file and create alphabet
-      unordered_map<char, size_t> mp;
-      char ch;
-      while (istr_.get(ch)) {
-        mp[ch]++;
-      }
-
-      if (!istr_.eof())
-        throw std::runtime_error("Unexpected error while reading ");
-      
-      // init huffman with alphabet
-      huffman_.Init(mp);
-      huffman_.CreateTree();
-
-      unordered_map<char, string> binary_alphabet = huffman_.GetBinaryAlphabet();
-      for (const auto& [ch, code] : binary_alphabet) {
-        std::cout << ch << ": " << code << "\n";
-      }
-      
-      istr_.clear();  // reset stream state
-      istr_.seekg(0); // set pointer to the start
-
-      while (istr_.get(ch)) {
-        auto it = binary_alphabet.find(ch);
-        if (it == binary_alphabet.end()) {
-          throw std::runtime_error("Unexpected exception. Abort.");
-        }
-        ostr_ << it->second;
-      }
-    }
   private:
-    ifstream istr_;
-    ofstream ostr_;
     Huffman huffman_;
+
+    Status SaveConfiguration(const std::string& path, const unordered_map<char, std::string>& binaryAlphabet) {
+      ofstream cfgFile(path);
+      if (!cfgFile) return Status(Status::ERROR, "Error creating " + path);
+      for (const auto& [ch, code] : binaryAlphabet) {
+          cfgFile << ch << ' ' << code << '\n';
+      }
+      return Status::Success();
+    }
+
+    Status LoadConfiguration(const std::string& path, unordered_map<std::string, char>& reverseAlphabet) {
+      ifstream cfgFile(path);
+      if (!cfgFile) return Status(Status::ERROR, "Can't open " + path);
+      char ch;
+      string code;
+      while (cfgFile >> ch >> code) {
+        reverseAlphabet[code] = ch;
+      }
+      return Status::Success();
+    }
 };
 
 bool operator<(const sw_pair& lhs, const sw_pair& rhs) {
   return lhs.second < rhs.second;
 }
-
