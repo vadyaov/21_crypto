@@ -1,7 +1,6 @@
 #pragma once
 
 #include "huffman.h"
-
 #include <iostream>
 
 using std::cin;

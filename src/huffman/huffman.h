@@ -7,6 +7,7 @@
 #include <functional>
 
 #include <fstream>
+#include <filesystem>
 
 #include <iostream>
 #include <cassert>
@@ -50,6 +51,10 @@ private:
 class Huffman {
   public:
     Huffman() = default;
+    ~Huffman() {
+      assert(state_.size() == 1);
+      destroy(state_.top());
+    }
 
     ~Huffman() {
       assert(state_.size() == 1);
@@ -79,6 +84,7 @@ class Huffman {
         Node* new_node = new Node(new_val, first_min_node, second_min_node);
         state_.push(new_node);
       }
+      assert(state_.size() == 1);
     }
 
     unordered_map<char, string> GetBinaryAlphabet() const {
@@ -142,6 +148,7 @@ class HuffmanProcessor {
       if (!ostr) return Status(Status::ERROR, "Can't open " + outputPath);
 
       unordered_map<char, size_t> frequency_map;
+
       char ch;
       while (istr.get(ch)) {
         frequency_map[ch]++;
@@ -159,6 +166,7 @@ class HuffmanProcessor {
 
       while (istr.get(ch)) {
         ostr << binaryAlphabet[ch];
+
       }
 
       return Status::Success();
